@@ -55,6 +55,13 @@
             <version>8.5.3</version>
         </dependency>
 
+        <!-- AWS S3 SDK: used for MinIO multipart upload APIs -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.25.60</version>
+        </dependency>
+
         <!-- Apache POI for document processing -->
         <dependency>
             <groupId>org.apache.poi</groupId>

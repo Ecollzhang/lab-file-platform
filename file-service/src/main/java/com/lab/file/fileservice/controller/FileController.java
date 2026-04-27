@@ -36,9 +36,9 @@ public class FileController {
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Result<FileEntity> uploadFile(
             @Parameter(description = "文件", required = true) @RequestParam("file") MultipartFile file,
-            @Parameter(description = "用户ID", required = true) @RequestParam("userId") Long userId,
             @Parameter(description = "父目录ID，0表示根目录", required = false) @RequestParam(value = "parentId", defaultValue = "0") Long parentId,
-            @Parameter(description = "文件描述", required = false) @RequestParam(value = "description", required = false) String description) {
+            @Parameter(description = "文件描述", required = false) @RequestParam(value = "description", required = false) String description,
+            @RequestHeader(value = "userId", required = false) Long userId) {
 
         FileEntity uploadedFile = fileService.uploadFile(file, userId, parentId, description);
         return Result.success("文件上传成功", uploadedFile);

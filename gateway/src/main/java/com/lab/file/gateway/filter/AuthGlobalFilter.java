@@ -35,6 +35,7 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     private static final List<String> WHITE_LIST = Arrays.asList(
         "/api/user/login",
         "/api/user/register",
+        "/api/file/chunk/chunk-test",
         "/actuator/**",
         "/swagger-ui/**",
         "/v3/api-docs/**",

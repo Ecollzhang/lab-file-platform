@@ -27,6 +27,7 @@ CREATE TABLE t_file (
     file_size BIGINT COMMENT '文件大小',
     file_type VARCHAR(100) COMMENT '文件类型',
     file_extension VARCHAR(10) COMMENT '文件扩展名',
+    file_md5 VARCHAR(32) COMMENT '文件MD5值',
     user_id BIGINT NOT NULL COMMENT '上传用户ID',
     parent_id BIGINT DEFAULT 0 COMMENT '父级目录ID，根目录为0',
     is_directory TINYINT DEFAULT 0 COMMENT '是否是目录 0-否, 1-是',
@@ -70,6 +71,8 @@ CREATE TABLE t_operation_log (
 CREATE TABLE t_file_chunk (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '分片ID',
     chunk_identifier VARCHAR(100) NOT NULL COMMENT '文件唯一标识',
+    upload_id VARCHAR(255) COMMENT '分片上传ID',
+    etag VARCHAR(255) COMMENT '分片ETag',
     file_name VARCHAR(255) NOT NULL COMMENT '文件名',
     chunk_number INT NOT NULL COMMENT '分片序号',
     total_chunks BIGINT NOT NULL COMMENT '总分片数',
@@ -90,6 +93,10 @@ CREATE INDEX idx_file_share_code ON t_file_share(share_code);
 CREATE INDEX idx_file_share_status ON t_file_share(status);
 CREATE INDEX idx_operation_log_user_time ON t_operation_log(user_id, create_time);
 CREATE INDEX idx_file_chunk_identifier ON t_file_chunk(chunk_identifier);
+
+-- 分片上传增强字段（在原有表基础上新增）
+ALTER TABLE t_file_chunk ADD COLUMN upload_id VARCHAR(255) COMMENT '分片上传ID' AFTER chunk_identifier;
+ALTER TABLE t_file_chunk ADD COLUMN etag VARCHAR(255) COMMENT '分片ETag' AFTER upload_id;
 
 -- 初始化默认管理员用户 (密码为明文123456的BCrypt加密结果)
 INSERT INTO t_user (username, password, email, role, create_time, update_time, status) VALUES

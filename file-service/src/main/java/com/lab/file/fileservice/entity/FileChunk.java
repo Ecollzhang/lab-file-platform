@@ -19,6 +19,10 @@ public class FileChunk {
 
     private String chunkIdentifier;  // 文件唯一标识
 
+    private String uploadId;         // 分片上传ID
+
+    private String etag;             // 分片ETag
+
     private String fileName;         // 文件名
 
     private Integer chunkNumber;     // 分片序号

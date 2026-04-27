@@ -28,7 +28,7 @@ public interface IFileChunkService {
      * @param file 分片文件
      * @return etag
      */
-    String uploadChunk(String md5, String uploadId, Integer partNumber, MultipartFile file);
+    String uploadChunk(String md5, String uploadId, Integer partNumber,  Long totalChunks, MultipartFile file, Long userId);
 
     /**
      * 获取已上传分片集合
