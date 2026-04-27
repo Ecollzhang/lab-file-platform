@@ -1,0 +1,35 @@
+server:
+  port: 8083
+
+spring:
+  main:
+    web-application-type: reactive
+  application:
+    name: gateway
+  cloud:
+    nacos:
+      config:
+        import-check:
+          enabled: false
+      discovery:
+        server-addr: localhost:8848
+        username: nacos
+        password: nacos
+        ip: 127.0.0.1
+    gateway:
+      discovery:
+        locator:
+          enabled: true  # 自动从 nacos 发现服务 ✅ 关键
+      routes:
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=1
+        - id: file-service
+          uri: lb://file-service
+          predicates:
+            - Path=/api/file/**
+          filters:
+            - StripPrefix=1
