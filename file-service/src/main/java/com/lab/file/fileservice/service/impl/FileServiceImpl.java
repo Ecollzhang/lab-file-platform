@@ -59,7 +59,7 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, FileEntity> impleme
             String originalName = file.getOriginalFilename();
             String extension = FileUtil.extName(originalName != null ? originalName : "unknown");
             String fileName = UUID.randomUUID().toString() + "." + extension;
-            String filePath = userId + "/" + LocalDateTime.now().getYear() + "/" + LocalDateTime.now().getMonthValue() + "/" + fileName;
+            String filePath = "user/" + userId + "/" + LocalDateTime.now().getYear() + "/" + LocalDateTime.now().getMonthValue() + "/" + fileName;
 
             // 上传到MinIO
             minioClient.putObject(

@@ -3,6 +3,7 @@ package com.lab.file.fileservice.service;
 import com.lab.file.fileservice.entity.FileEntity;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,9 +35,20 @@ public interface IFileChunkService {
      * 获取已上传分片集合
      * @param md5 文件md5
      * @param uploadId 分片上传id
+     * @param userId 用户id
      * @return key:分片序号, value:etag
      */
-    Map<Integer, String> getUploadedChunks(String md5, String uploadId);
+    Map<Integer, String> getUploadedChunks(String md5, String uploadId, Long userId);
+
+    /**
+     * 获取未上传的分片序号列表
+     * @param md5 文件md5
+     * @param uploadId 分片上传id
+     * @param totalChunks 总分片数
+     * @param userId 用户id
+     * @return 未上传的分片序号数组
+     */
+    List<Integer> getMissingChunks(String md5, String uploadId, Integer totalChunks, Long userId);
 
     /**
      * 合并分片
@@ -55,8 +67,9 @@ public interface IFileChunkService {
      * 取消/终止分片上传
      * @param md5 文件md5
      * @param uploadId 分片上传id
+     * @param userId 用户id
      */
-    void cancelUpload(String md5, String uploadId);
+    void cancelUpload(String md5, String uploadId, Long userId);
 
     /**
      * 秒传校验：根据md5判断文件是否已存在

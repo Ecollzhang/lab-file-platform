@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分片上传测试工具</title>
+    <script src="https://cdn.jsdelivr.net/npm/spark-md5@3.0.2/spark-md5.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #333; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { text-align: center; color: #1a73e8; margin-bottom: 24px; font-size: 24px; }
+
+        .config-bar { background: #fff; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.1); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .config-bar label { font-weight: 600; font-size: 14px; }
+        .config-bar input { padding: 6px 10px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 13px; outline: none; }
+        .config-bar input:focus { border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,.15); }
+        .config-bar .url-input { flex: 1; min-width: 200px; }
+
+        .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+        .card h2 { font-size: 16px; color: #1a73e8; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e8eaed; }
+        .card h2 .badge { display: inline-block; background: #1a73e8; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle; }
+
+        .flow-card { border-left: 4px solid #34a853; }
+        .flow-card h2 { color: #34a853; border-bottom-color: #ceead6; }
+
+        .form-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+        .form-row label { font-size: 13px; font-weight: 600; min-width: 80px; color: #555; }
+        .form-row input, .form-row select { flex: 1; min-width: 120px; padding: 6px 10px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 13px; outline: none; }
+        .form-row input:focus, .form-row select:focus { border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,.15); }
+        .form-row input[type="file"] { padding: 4px 0; border: none; }
+
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; }
+        .btn:active { transform: scale(.97); }
+        .btn-primary { background: #1a73e8; color: #fff; }
+        .btn-primary:hover { background: #1557b0; }
+        .btn-success { background: #34a853; color: #fff; }
+        .btn-success:hover { background: #2d8f47; }
+        .btn-danger { background: #ea4335; color: #fff; }
+        .btn-danger:hover { background: #c62828; }
+        .btn-warning { background: #fbbc04; color: #333; }
+        .btn-warning:hover { background: #e0a800; }
+        .btn-outline { background: transparent; color: #1a73e8; border: 1px solid #1a73e8; }
+        .btn-outline:hover { background: #e8f0fe; }
+        .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+        .log-area { background: #1e1e1e; color: #d4d4d4; border-radius: 6px; padding: 12px; margin-top: 10px; max-height: 400px; overflow-y: auto; font-family: "Cascadia Code", "Fira Code", monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+        .log-area .log-time { color: #6a9955; }
+        .log-area .log-info { color: #9cdcfe; }
+        .log-area .log-success { color: #4ec9b0; }
+        .log-area .log-error { color: #f44747; }
+        .log-area .log-warn { color: #ce9178; }
+        .log-area .log-data { color: #b5cea8; }
+
+        .progress-wrap { margin-top: 10px; }
+        .progress-bar { width: 100%; height: 22px; background: #e8eaed; border-radius: 11px; overflow: hidden; position: relative; }
+        .progress-bar .fill { height: 100%; background: linear-gradient(90deg, #1a73e8, #34a853); border-radius: 11px; transition: width .3s; width: 0; }
+        .progress-bar .text { position: absolute; top: 0; left: 50%; transform: translateX(-50%); line-height: 22px; font-size: 12px; font-weight: 600; color: #333; }
+
+        .chunk-info { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); gap: 6px; margin-top: 8px; }
+        .chunk-info .item { padding: 4px 8px; border-radius: 4px; font-size: 12px; text-align: center; }
+        .chunk-info .pending { background: #f1f3f4; color: #666; }
+        .chunk-info .uploaded { background: #ceead6; color: #1e7e34; }
+        .chunk-info .uploading { background: #e8f0fe; color: #1a73e8; }
+
+        .tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+        .tabs button { padding: 6px 14px; border: 1px solid #d9d9d9; border-radius: 6px 6px 0 0; background: #f8f9fa; cursor: pointer; font-size: 13px; font-weight: 500; color: #666; }
+        .tabs button.active { background: #fff; border-bottom-color: #fff; color: #1a73e8; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .inline-code { background: #f1f3f4; padding: 1px 5px; border-radius: 3px; font-family: monospace; font-size: 12px; }
+
+        .row { display: flex; gap: 16px; }
+        .col { flex: 1; min-width: 0; }
+
+        @media (max-width: 700px) { .row { flex-direction: column; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>分片上传测试工具</h1>
+
+    <!-- 配置栏 -->
+    <div class="config-bar">
+        <label>服务地址</label>
+        <input class="url-input" id="serverUrl" value="http://localhost:8082" placeholder="http://localhost:8082">
+        <label>用户ID</label>
+        <input id="defaultUserId" value="1" style="width:70px">
+        <button class="btn btn-outline" onclick="toggleAll()">展开/折叠全部</button>
+        <button class="btn btn-outline" onclick="clearAllLogs()">清空日志</button>
+    </div>
+
+    <!-- ====== 完整流程 ====== -->
+    <div class="card flow-card" id="card-flow">
+        <h2 onclick="toggleCard(this)" style="cursor:pointer">
+            ▶ 完整上传流程
+            <span class="badge">一键测试</span>
+        </h2>
+        <div class="card-body">
+            <div class="form-row">
+                <label>选择文件</label>
+                <input type="file" id="flowFile">
+                <label>分片大小</label>
+                <select id="flowChunkSize">
+                    <option value="1048576">1 MB</option>
+                    <option value="5242880" selected>5 MB</option>
+                    <option value="10485760">10 MB</option>
+                    <option value="20971520">20 MB</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>父目录ID</label>
+                <input id="flowParentId" value="0" style="flex:0 0 80px">
+                <label>描述</label>
+                <input id="flowDesc" value="分片上传测试" style="flex:1">
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-success" onclick="startFlow()" id="flowBtn">🚀 开始上传</button>
+                <button class="btn btn-danger" onclick="cancelFlow()" id="cancelFlowBtn" disabled>取消上传</button>
+            </div>
+            <div class="progress-wrap" id="flowProgressWrap" style="display:none">
+                <div class="progress-bar"><div class="fill" id="flowProgressFill"></div><div class="text" id="flowProgressText">0%</div></div>
+            </div>
+            <div class="chunk-info" id="flowChunkInfo"></div>
+            <div class="log-area" id="flowLog"></div>
+        </div>
+    </div>
+
+    <!-- ====== 手动测试 ====== -->
+    <div class="card" id="card-manual">
+        <h2 onclick="toggleCard(this)" style="cursor:pointer">▶ 手动接口测试</h2>
+        <div class="card-body">
+            <div class="tabs">
+                <button class="active" data-tab="tab-init">Init</button>
+                <button data-tab="tab-upload">Upload</button>
+                <button data-tab="tab-list">List</button>
+                <button data-tab="tab-merge">Merge</button>
+                <button data-tab="tab-cancel">Cancel</button>
+                <button data-tab="tab-missing">Missing</button>
+                <button data-tab="tab-exists">Exists</button>
+            </div>
+
+            <!-- Init -->
+            <div class="tab-panel active" id="tab-init">
+                <div class="form-row"><label>fileName</label><input id="mInitFile" value="test.txt"></div>
+                <div class="form-row"><label>md5</label><input id="mInitMd5" value="d41d8cd98f00b204e9800998ecf8427e"></div>
+                <div class="form-row"><label>totalChunks</label><input id="mInitTotal" value="1" type="number"></div>
+                <button class="btn btn-primary" onclick="manualInit()">发送请求</button>
+                <div class="log-area" id="log-init"></div>
+            </div>
+
+            <!-- Upload -->
+            <div class="tab-panel" id="tab-upload">
+                <div class="form-row"><label>md5</label><input id="mUpMd5" value="test-md5"></div>
+                <div class="form-row"><label>uploadId</label><input id="mUpId" value=""></div>
+                <div class="form-row"><label>partNumber</label><input id="mUpPart" value="1" type="number"></div>
+                <div class="form-row"><label>totalChunks</label><input id="mUpTotal" value="1" type="number"></div>
+                <div class="form-row"><label>chunk 文件</label><input type="file" id="mUpFile"></div>
+                <button class="btn btn-primary" onclick="manualUpload()">发送请求</button>
+                <div class="log-area" id="log-upload"></div>
+            </div>
+
+            <!-- List -->
+            <div class="tab-panel" id="tab-list">
+                <div class="form-row"><label>md5</label><input id="mListMd5" value="test-md5"></div>
+                <div class="form-row"><label>uploadId</label><input id="mListId" value=""></div>
+                <button class="btn btn-primary" onclick="manualList()">发送请求</button>
+                <div class="log-area" id="log-list"></div>
+            </div>
+
+            <!-- Merge -->
+            <div class="tab-panel" id="tab-merge">
+                <div class="form-row"><label>md5</label><input id="mMergeMd5" value="test-md5"></div>
+                <div class="form-row"><label>uploadId</label><input id="mMergeId" value=""></div>
+                <div class="form-row"><label>fileName</label><input id="mMergeFile" value="merged.txt"></div>
+                <div class="form-row"><label>parentId</label><input id="mMergeParent" value="0" type="number"></div>
+                <div class="form-row"><label>description</label><input id="mMergeDesc" value="manual merge"></div>
+                <button class="btn btn-primary" onclick="manualMerge()">发送请求</button>
+                <div class="log-area" id="log-merge"></div>
+            </div>
+
+            <!-- Cancel -->
+            <div class="tab-panel" id="tab-cancel">
+                <div class="form-row"><label>md5</label><input id="mCancelMd5" value="test-md5"></div>
+                <div class="form-row"><label>uploadId</label><input id="mCancelId" value=""></div>
+                <button class="btn btn-danger" onclick="manualCancel()">发送请求</button>
+                <div class="log-area" id="log-cancel"></div>
+            </div>
+
+            <!-- Exists -->
+            <div class="tab-panel" id="tab-exists">
+                <div class="form-row"><label>md5</label><input id="mExistsMd5" value="d41d8cd98f00b204e9800998ecf8427e"></div>
+                <button class="btn btn-primary" onclick="manualExists()">发送请求</button>
+                <div class="log-area" id="log-exists"></div>
+            </div>
+
+            <!-- Missing Chunks -->
+            <div class="tab-panel" id="tab-missing">
+                <div class="form-row"><label>md5</label><input id="mMissMd5" value=""></div>
+                <div class="form-row"><label>uploadId</label><input id="mMissId" value=""></div>
+                <div class="form-row"><label>totalChunks</label><input id="mMissTotal" value="1" type="number"></div>
+                <button class="btn btn-primary" onclick="manualMissing()">发送请求</button>
+                <div class="log-area" id="log-missing"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ========== 全局状态 ==========
+    const BASE = () => document.getElementById('serverUrl').value.replace(/\/+$/, '');
+    const USER_ID = () => parseInt(document.getElementById('defaultUserId').value) || 1;
+
+    let flowState = { running: false, md5: '', uploadId: '', totalChunks: 0, objectName: '', aborted: false };
+
+    // ========== 工具函数 ==========
+    function $(id) { return document.getElementById(id); }
+
+    function log(el, msg, type) {
+        const t = new Date().toLocaleTimeString();
+        el.innerHTML += `<span class="log-time">[${t}]</span> <span class="log-${type||'info'}">${msg}</span>\n`;
+        el.scrollTop = el.scrollHeight;
+    }
+
+    function clearLog(el) { el.innerHTML = ''; }
+
+    function now() { return new Date().toLocaleTimeString(); }
+
+    function toggleCard(el) {
+        const body = el.parentElement.querySelector('.card-body');
+        const isHidden = body.style.display === 'none';
+        body.style.display = isHidden ? 'block' : 'none';
+        el.textContent = (isHidden ? '▼' : '▶') + el.textContent.slice(1);
+    }
+
+    function toggleAll() {
+        const all = document.querySelectorAll('.card-body');
+        const first = all[0];
+        const show = first.style.display === 'none';
+        all.forEach(b => { b.style.display = show ? 'block' : 'none'; });
+    }
+
+    function clearAllLogs() {
+        document.querySelectorAll('.log-area').forEach(el => el.innerHTML = '');
+    }
+
+    // Tabs
+    document.querySelectorAll('.tabs button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(btn.dataset.tab).classList.add('active');
+        });
+    });
+
+    // ========== HTTP 请求 ==========
+    async function api(method, path, opts = {}) {
+        const url = BASE() + path;
+        const headers = {};
+        if (opts.json) { headers['Content-Type'] = 'application/json'; }
+        // 每次请求自动从配置栏读取 userId 放入请求头
+        headers['userId'] = USER_ID();
+        if (opts.userId != null) { headers['userId'] = opts.userId; }
+
+        const fetchOpts = { method, headers };
+        if (opts.body) fetchOpts.body = opts.body;
+
+        const res = await fetch(url, fetchOpts);
+        const data = await res.json();
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${data.message || res.statusText}`);
+        if (data.code !== 200) throw new Error(data.message || '业务错误');
+        return data;
+    }
+
+    function apiGet(path, params, userId) {
+        const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+        return api('GET', path + '?' + qs, { userId });
+    }
+
+    function apiPostJson(path, body, userId) {
+        return api('POST', path, { body: JSON.stringify(body), json: true, userId });
+    }
+
+    function apiPostForm(path, data, userId) {
+        const fd = new FormData();
+        Object.entries(data).forEach(([k,v]) => fd.append(k, v));
+        return api('POST', path, { body: fd, userId });
+    }
+
+    function apiPostFile(path, data, fileField, file, userId) {
+        const fd = new FormData();
+        Object.entries(data).forEach(([k,v]) => fd.append(k, v));
+        fd.append(fileField, file);
+        return api('POST', path, { body: fd, userId });
+    }
+
+    // ========== MD5 计算 ==========
+    function calcMD5(file) {
+        return new Promise((resolve, reject) => {
+            const spark = new SparkMD5.ArrayBuffer();
+            const reader = new FileReader();
+            const chunkSize = 10 * 1024 * 1024;
+            let pos = 0;
+
+            reader.onerror = () => reject(reader.error);
+            reader.onload = () => {
+                spark.append(reader.result);
+                pos += chunkSize;
+                if (pos < file.size) { readNext(); }
+                else { resolve(spark.end()); }
+            };
+
+            function readNext() {
+                const slice = file.slice(pos, Math.min(pos + chunkSize, file.size));
+                reader.readAsArrayBuffer(slice);
+            }
+            readNext();
+        });
+    }
+
+    // ========== 手动测试函数 ==========
+    function getUserIdFromConfig() {
+        return parseInt(document.getElementById('defaultUserId').value) || 1;
+    }
+
+    function manualInit() {
+        const logEl = $('log-init');
+        clearLog(logEl);
+        const md5 = $('mInitMd5').value.trim() || 'd41d8cd98f00b204e9800998ecf8427e';
+        const body = {
+            fileName: $('mInitFile').value.trim() || 'test.txt',
+            md5: md5,
+            totalChunks: parseInt($('mInitTotal').value) || 1
+        };
+        log(logEl, `POST ${BASE()}/file/chunk/init`, 'info');
+        log(logEl, `Body: ${JSON.stringify(body)}`, 'info');
+        apiPostJson('/file/chunk/init', body, getUserIdFromConfig())
+            .then(r => { log(logEl, `✅ uploadId: ${r.data}`, 'success'); })
+            .catch(e => { log(logEl, `❌ ${e.message}`, 'error'); });
+    }
+
+    function manualUpload() {
+        const logEl = $('log-upload');
+        clearLog(logEl);
+        const file = $('mUpFile').files[0];
+        if (!file) { log(logEl, '❌ 请选择文件', 'error'); return; }
+        const data = {
+            md5: $('mUpMd5').value.trim(),
+            uploadId: $('mUpId').value.trim(),
+            partNumber: parseInt($('mUpPart').value) || 1,
+            totalChunks: parseInt($('mUpTotal').value) || 1
+        };
+        log(logEl, `POST ${BASE()}/file/chunk/upload (multipart)`, 'info');
+        log(logEl, `md5=${data.md5}, uploadId=${data.uploadId}, partNumber=${data.partNumber}, totalChunks=${data.totalChunks}, file=${file.name}(${file.size}B)`, 'info');
+        apiPostFile('/file/chunk/upload', data, 'chunk', file, getUserIdFromConfig())
+            .then(r => { log(logEl, `✅ etag: ${r.data}`, 'success'); })
+            .catch(e => { log(logEl, `❌ ${e.message}`, 'error'); });
+    }
+
+    function manualList() {
+        const logEl = $('log-list');
+        clearLog(logEl);
+        const md5 = $('mListMd5').value.trim();
+        const uploadId = $('mListId').value.trim();
+        log(logEl, `GET ${BASE()}/file/chunk/uploaded?md5=${md5}&uploadId=${uploadId}`, 'info');
+        apiGet('/file/chunk/uploaded', { md5, uploadId }, getUserIdFromConfig())
+            .then(r => {
+                const parts = Object.entries(r.data || {}).map(([k,v]) => `#${k}=${v}`).join(', ') || '(empty)';
+                log(logEl, `✅ ${parts}`, 'success');
+            })
+            .catch(e => { log(logEl, `❌ ${e.message}`, 'error'); });
+    }
+
+    function manualMerge() {
+        const logEl = $('log-merge');
+        clearLog(logEl);
+        const data = {
+            md5: $('mMergeMd5').value.trim(),
+            uploadId: $('mMergeId').value.trim(),
+            fileName: $('mMergeFile').value.trim() || 'merged.txt',
+            userId: getUserIdFromConfig(),
+            parentId: parseInt($('mMergeParent').value) || 0,
+            description: $('mMergeDesc').value.trim() || ''
+        };
+        log(logEl, `POST ${BASE()}/file/chunk/merge`, 'info');
+        log(logEl, `md5=${data.md5}, uploadId=${data.uploadId}, fileName=${data.fileName}`, 'info');
+        apiPostForm('/file/chunk/merge', data, getUserIdFromConfig())
+            .then(r => {
+                const f = r.data || {};
+                log(logEl, `✅ 合并成功: id=${f.id}, fileName=${f.fileName}, size=${f.fileSize}`, 'success');
+            })
+            .catch(e => { log(logEl, `❌ ${e.message}`, 'error'); });
+    }
+
+    function manualCancel() {
+        const logEl = $('log-cancel');
+        clearLog(logEl);
+        const md5 = $('mCancelMd5').value.trim();
+        const uploadId = $('mCancelId').value.trim();
+        log(logEl, `POST ${BASE()}/file/chunk/cancel`, 'info');
+        log(logEl, `md5=${md5}, uploadId=${uploadId}`, 'info');
+        apiPostForm('/file/chunk/cancel', { md5, uploadId }, getUserIdFromConfig())
+            .then(r => { log(logEl, `✅ 取消成功`, 'success'); })
+            .catch(e => { log(logEl, `❌ ${e.message}`, 'error'); });
+    }
+
+    function manualExists() {
+        const logEl = $('log-exists');
+        clearLog(logEl);
+        const md5 = $('mExistsMd5').value.trim();
+        log(logEl, `GET ${BASE()}/file/chunk/exists?md5=${md5}&userId=${getUserIdFromConfig()}`, 'info');
+        apiGet('/file/chunk/exists', { md5, userId: getUserIdFromConfig() }, getUserIdFromConfig())
+            .then(r => {
+                if (r.data) { log(logEl, `✅ 文件已存在: id=${r.data.id}, fileName=${r.data.fileName}, size=${r.data.fileSize}`, 'success'); }
+                else { log(logEl, `✅ 文件不存在，可以上传`, 'warn'); }
+            })
+            .catch(e => { log(logEl, `❌ ${e.message}`, 'error'); });
+    }
+
+    function manualMissing() {
+        const logEl = $('log-missing');
+        clearLog(logEl);
+        const md5 = $('mMissMd5').value.trim();
+        const uploadId = $('mMissId').value.trim();
+        const totalChunks = parseInt($('mMissTotal').value) || 1;
+        log(logEl, `GET ${BASE()}/file/chunk/missing-chunks?md5=${md5}&uploadId=${uploadId}&totalChunks=${totalChunks}`, 'info');
+        apiGet('/file/chunk/missing-chunks', { md5, uploadId, totalChunks }, getUserIdFromConfig())
+            .then(r => {
+                const missing = r.data || [];
+                if (missing.length === 0) {
+                    log(logEl, `✅ 所有分片已上传完成`, 'success');
+                } else {
+                    log(logEl, `⚠️ 未上传分片: [${missing.join(', ')}] (共 ${missing.length}/${totalChunks})`, 'warn');
+                }
+            })
+            .catch(e => { log(logEl, `❌ ${e.message}`, 'error'); });
+    }
+
+    // ========== 完整上传流程 ==========
+    function flowLog(msg, type) { log($('flowLog'), msg, type); }
+
+    async function startFlow() {
+        const file = $('flowFile').files[0];
+        if (!file) { flowLog('❌ 请先选择文件', 'error'); return; }
+
+        flowState.aborted = false;
+        flowState.running = true;
+        flowState.uploadId = '';
+        flowState.md5 = '';
+        flowState.totalChunks = 0;
+
+        const btn = $('flowBtn');
+        const cancelBtn = $('cancelFlowBtn');
+        btn.disabled = true;
+        cancelBtn.disabled = false;
+        clearLog($('flowLog'));
+
+        const chunkSize = parseInt($('flowChunkSize').value);
+        const totalChunks = Math.ceil(file.size / chunkSize);
+        const progressWrap = $('flowProgressWrap');
+        const progressFill = $('flowProgressFill');
+        const progressText = $('flowProgressText');
+        const chunkInfo = $('flowChunkInfo');
+        progressWrap.style.display = 'block';
+
+        // 初始化 chunk 状态显示
+        let chunkHtml = '';
+        for (let i = 1; i <= totalChunks; i++) {
+            chunkHtml += `<div class="item pending" id="chunk-${i}">#${i} 待上传</div>`;
+        }
+        chunkInfo.innerHTML = chunkHtml;
+
+        try {
+            // 1. 计算 MD5
+            flowLog('📝 正在计算文件 MD5...', 'info');
+            const md5 = await calcMD5(file);
+            flowState.md5 = md5;
+            flowLog(`✅ MD5: ${md5}`, 'success');
+
+            // 检查是否已存在（秒传）
+            flowLog('🔍 检查文件是否已存在...', 'info');
+            const existsRes = await apiGet('/file/chunk/exists', { md5, userId: USER_ID() }, USER_ID()).catch(() => ({ data: null }));
+            if (existsRes && existsRes.data) {
+                flowLog(`✅ 文件已存在（秒传）: ${existsRes.data.fileName}`, 'success');
+                btn.disabled = false;
+                cancelBtn.disabled = true;
+                flowState.running = false;
+                return;
+            }
+            flowLog('✅ 文件不存在，继续上传', 'info');
+
+            // 2. 初始化上传
+            flowLog('🚀 初始化分片上传...', 'info');
+            const initRes = await apiPostJson('/file/chunk/init', {
+                fileName: file.name,
+                md5: md5,
+                totalChunks: totalChunks
+            }, USER_ID());
+            const uploadId = initRes.data;
+            flowState.uploadId = uploadId;
+            flowState.totalChunks = totalChunks;
+            flowLog(`✅ uploadId: ${uploadId}`, 'success');
+
+            // 3. 查询未上传分片
+            flowLog('🔍 查询未上传分片...', 'info');
+            const missingRes = await apiGet('/file/chunk/missing-chunks', {
+                md5, uploadId, totalChunks
+            }, USER_ID());
+            const missingChunks = missingRes.data || [];
+
+            // 显示分片状态
+            let chunkHtml = '';
+            for (let i = 1; i <= totalChunks; i++) {
+                const isMissing = missingChunks.includes(i);
+                chunkHtml += `<div class="item ${isMissing ? 'pending' : 'uploaded'}" id="chunk-${i}">#${i} ${isMissing ? '待上传' : '已上传'}</div>`;
+            }
+            chunkInfo.innerHTML = chunkHtml;
+
+            flowLog(`需要上传 ${missingChunks.length}/${totalChunks} 个分片`, 'info');
+
+            // 4. 只上传缺失的分片
+            if (missingChunks.length > 0) {
+                let uploadedCount = totalChunks - missingChunks.length;
+                const updateProgress = () => {
+                    const pct = Math.round((uploadedCount / totalChunks) * 100);
+                    progressFill.style.width = pct + '%';
+                    progressText.textContent = `${uploadedCount}/${totalChunks} (${pct}%)`;
+                };
+                updateProgress();
+
+                for (const partNum of missingChunks) {
+                    if (flowState.aborted) {
+                        flowLog('⛔ 上传已取消', 'warn');
+                        return;
+                    }
+
+                    const chunkEl = document.getElementById(`chunk-${partNum}`);
+                    chunkEl.className = 'item uploading';
+                    chunkEl.textContent = `#${partNum} 上传中...`;
+
+                    const start = (partNum - 1) * chunkSize;
+                    const end = Math.min(start + chunkSize, file.size);
+                    const blob = file.slice(start, end);
+
+                    flowLog(`  ↳ 上传分片 #${partNum} (${blob.size}B)...`, 'info');
+                    await apiPostFile('/file/chunk/upload', {
+                        md5, uploadId, partNumber: partNum, totalChunks
+                    }, 'chunk', blob, USER_ID());
+
+                    uploadedCount++;
+                    updateProgress();
+                    chunkEl.className = 'item uploaded';
+                    chunkEl.textContent = `#${partNum} ✅`;
+                    flowLog(`  ✅ 分片 #${partNum} 上传成功`, 'success');
+                }
+            } else {
+                flowLog('✅ 所有分片已上传，无需重复上传', 'success');
+                progressFill.style.width = '100%';
+                progressText.textContent = `${totalChunks}/${totalChunks} (100%)`;
+            }
+
+            // 5. 合并分片
+            if (!flowState.aborted) {
+                flowLog('🧩 正在合并分片...', 'info');
+                await apiPostForm('/file/chunk/merge', {
+                    md5, uploadId, fileName: file.name,
+                    userId: USER_ID(),
+                    parentId: parseInt($('flowParentId').value) || 0,
+                    description: $('flowDesc').value.trim() || ''
+                }, USER_ID());
+                flowLog('🎉 合并成功！文件上传完成！', 'success');
+            }
+
+        } catch (e) {
+            flowLog(`❌ ${e.message}`, 'error');
+            // 出错时自动取消
+            if (flowState.uploadId) {
+                try {
+                    await apiPostForm('/file/chunk/cancel', { md5: flowState.md5, uploadId: flowState.uploadId }, USER_ID());
+                    flowLog('ℹ️ 已自动取消该上传', 'warn');
+                } catch (_) {}
+            }
+        } finally {
+            btn.disabled = false;
+            cancelBtn.disabled = true;
+            flowState.running = false;
+        }
+    }
+
+    async function cancelFlow() {
+        if (!flowState.uploadId || !flowState.md5) {
+            flowLog('⛔ 没有正在进行的上传', 'warn');
+            return;
+        }
+        flowState.aborted = true;
+        flowLog('⛔ 正在取消上传...', 'warn');
+        try {
+            await apiPostForm('/file/chunk/cancel', { md5: flowState.md5, uploadId: flowState.uploadId }, USER_ID());
+            flowLog('✅ 已取消', 'success');
+        } catch (e) {
+            flowLog(`❌ 取消失败: ${e.message}`, 'error');
+        }
+        $('flowBtn').disabled = false;
+        $('cancelFlowBtn').disabled = true;
+        flowState.running = false;
+    }
+</script>
+</body>
+</html>
