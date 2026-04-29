@@ -549,11 +549,11 @@
         const params = { fileId, shareType, maxDownloadCount, targetUserIds: targetUserIds || undefined };
         if (expireHours) params.expireHours = expireHours;
 
-        log(logEl, `POST ${BASE()}/share/create`, 'info');
+        log(logEl, `POST ${BASE()}/file/share/create`, 'info');
         log(logEl, `fileId=${fileId}, shareType=${shareType === '1' ? '公开' : '私密'}, maxDownloadCount=${maxDownloadCount}, expireHours=${expireHours || '无'}`, 'info');
         if (targetUserIds) log(logEl, `目标用户: ${targetUserIds}`, 'info');
         try {
-            const res = await apiPostForm('/share/create', params, USER_ID());
+            const res = await apiPostForm('/file/share/create', params, USER_ID());
             const share = res.data;
             log(logEl, '✅ 分享创建成功!', 'success');
             log(logEl, `分享码: ${share.shareCode}`, 'data');
@@ -573,9 +573,9 @@
         const logEl = $('log-share-list');
         const tbody = $('shareListBody');
         clearLog(logEl);
-        log(logEl, `GET ${BASE()}/share/list`, 'info');
+        log(logEl, `GET ${BASE()}/file/share/list`, 'info');
         try {
-            const res = await apiGet('/share/list', {});
+            const res = await apiGet('/file/share/list', {});
             const shares = res.data || [];
             tbody.innerHTML = shares.map(s => {
                 const statusClass = s.status === 1 ? 'status-active' : 'status-expired';
@@ -603,9 +603,9 @@
         clearLog(logEl);
         const shareId = $('cancelShareId').value;
         if (!shareId) { log(logEl, '❌ 请输入分享记录ID', 'error'); return; }
-        log(logEl, `DELETE ${BASE()}/share/${shareId}`, 'info');
+        log(logEl, `DELETE ${BASE()}/file/share/${shareId}`, 'info');
         try {
-            await api('DELETE', '/share/' + shareId, { userId: USER_ID() });
+            await api('DELETE', '/file/share/' + shareId, { userId: USER_ID() });
             log(logEl, '✅ 取消分享成功', 'success');
             listMyShares();
         } catch (e) {
@@ -636,7 +636,7 @@
         const list = $('shareTargetUsersList');
         list.innerHTML = '<span style="color:#999;font-size:12px;">加载中...</span>';
         try {
-            const res = await apiGet('/share/users', {});
+            const res = await apiGet('/file/share/users', {});
             const users = res.data || [];
             list.innerHTML = users.map(u => {
                 const checked = u.id === USER_ID() ? 'disabled' : '';
@@ -656,9 +656,9 @@
         clearLog(logEl);
         const code = getShareCode();
         if (!code) { log(logEl, '❌ 请输入分享码', 'error'); return; }
-        log(logEl, `GET ${BASE()}/share/${code}`, 'info');
+        log(logEl, `GET ${BASE()}/file/share/${code}`, 'info');
         try {
-            const res = await apiGet('/share/' + code, {});
+            const res = await apiGet('/file/share/' + code, {});
             const s = res.data;
             $('shareCodeDisplay').textContent = s.shareCode;
             $('shareInfoDisplay').style.display = 'block';
@@ -675,11 +675,11 @@
             const tuDisplay = $('shareTargetUsersDisplay');
             if (s.shareType === 2) {
                 try {
-                    const tuRes = await apiGet('/share/' + code + '/target-users', {});
+                    const tuRes = await apiGet('/file/share/' + code + '/target-users', {});
                     const userIds = tuRes.data || [];
                     if (userIds.length > 0) {
                         const userMap = {};
-                        const userRes = await apiGet('/share/users', {});
+                        const userRes = await apiGet('/file/share/users', {});
                         (userRes.data || []).forEach(u => userMap[u.id] = u.username);
                         const names = userIds.map(id => userMap[id] || '用户#' + id).join(', ');
                         tuDisplay.style.display = 'block';
@@ -705,9 +705,9 @@
         clearLog(logEl);
         const code = getShareCode();
         if (!code) { log(logEl, '❌ 请输入分享码', 'error'); return; }
-        log(logEl, `GET ${BASE()}/share/${code}/list?parentId=${_shareCurrentDirId}`, 'info');
+        log(logEl, `GET ${BASE()}/file/share/${code}/list?parentId=${_shareCurrentDirId}`, 'info');
         try {
-            const res = await apiGet('/share/' + code + '/list', { parentId: _shareCurrentDirId });
+            const res = await apiGet('/file/share/' + code + '/list', { parentId: _shareCurrentDirId });
             const files = res.data || [];
             tbody.innerHTML = files.map(f => {
                 const isDir = f.isDirectory === 1;
@@ -752,7 +752,7 @@
         const logEl = $('log-share-list-files');
         const code = getShareCode();
         if (!code) return;
-        const path = '/share/' + code + '/download?fileId=' + fileId;
+        const path = '/file/share/' + code + '/download?fileId=' + fileId;
         await asyncDownload(path, null, logEl);
     }
 
@@ -761,7 +761,7 @@
         const code = getShareCode();
         if (!code) return;
         const frame = $('sharePreviewFrame');
-        const url = BASE() + '/share/' + code + '/preview?fileId=' + fileId;
+        const url = BASE() + '/file/share/' + code + '/preview?fileId=' + fileId;
         try {
             const res = await fetch(url, { headers: { 'userId': USER_ID() } });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -782,7 +782,7 @@
         const code = getShareCode();
         if (!code) { log(logEl, '❌ 请输入分享码', 'error'); return; }
         const fileId = $('shareDownloadFileId').value.trim();
-        const path = '/share/' + code + '/download' + (fileId ? '?fileId=' + fileId : '');
+        const path = '/file/share/' + code + '/download' + (fileId ? '?fileId=' + fileId : '');
         log(logEl, `⬇️ 下载: ${BASE()}${path}`, 'info');
         await asyncDownload(path, null, logEl);
     }
@@ -795,7 +795,7 @@
         const code = getShareCode();
         if (!code) { log(logEl, '❌ 请输入分享码', 'error'); return; }
         const fileId = $('sharePreviewFileId').value.trim();
-        const url = BASE() + '/share/' + code + '/preview' + (fileId ? '?fileId=' + fileId : '');
+        const url = BASE() + '/file/share/' + code + '/preview' + (fileId ? '?fileId=' + fileId : '');
         log(logEl, `🔗 Fetch: ${url}`, 'info');
         try {
             const res = await fetch(url, { headers: { 'userId': USER_ID() } });
@@ -821,9 +821,9 @@
         const parentId = $('shareUploadParentId').value || '0';
         const description = $('shareUploadDesc').value || '通过分享码上传';
 
-        log(logEl, `POST ${BASE()}/share/${code}/upload (file=${file.name}, parentId=${parentId})`, 'info');
+        log(logEl, `POST ${BASE()}/file/share/${code}/upload (file=${file.name}, parentId=${parentId})`, 'info');
         try {
-            const res = await apiPostForm('/share/' + code + '/upload', { file, parentId, description }, USER_ID());
+            const res = await apiPostForm('/file/share/' + code + '/upload', { file, parentId, description }, USER_ID());
             log(logEl, `✅ 上传成功: id=${res.data.id}, name=${res.data.originalName}`, 'success');
             getShareFileList();
         } catch (e) {

@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  * 文件分享控制器
  */
 @RestController
-@RequestMapping("/share")
+@RequestMapping("/file/share")
 @Tag(name = "文件分享", description = "文件分享、分享码下载、共享目录上传等接口")
 public class FileShareController {
 

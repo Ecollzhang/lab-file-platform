@@ -157,3 +157,7 @@ id_rsa
 id_dsa
 *.key
 config/keys/*
+
+# frontend
+node_modules
+dist
