@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件分享 & 预览测试工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #333; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        h1 { text-align: center; color: #1a73e8; margin-bottom: 24px; font-size: 24px; }
+
+        .config-bar { background: #fff; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.1); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .config-bar label { font-weight: 600; font-size: 14px; }
+        .config-bar input { padding: 6px 10px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 13px; outline: none; }
+        .config-bar input:focus { border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,.15); }
+        .config-bar .url-input { flex: 1; min-width: 200px; }
+
+        .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+        .card h2 { font-size: 16px; color: #1a73e8; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e8eaed; cursor: pointer; }
+        .card h2 .badge { display: inline-block; background: #1a73e8; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle; }
+        .card h2 .badge-green { background: #34a853; }
+        .card h2 .badge-orange { background: #fbbc04; color: #333; }
+
+        .form-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+        .form-row label { font-size: 13px; font-weight: 600; min-width: 80px; color: #555; }
+        .form-row input, .form-row select { flex: 1; min-width: 120px; padding: 6px 10px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 13px; outline: none; }
+        .form-row input:focus, .form-row select:focus { border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,.15); }
+        .form-row input[type="file"] { padding: 4px 0; border: none; }
+        .form-row .inline-btn { flex: 0 0 auto; }
+
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; }
+        .btn:active { transform: scale(.97); }
+        .btn-primary { background: #1a73e8; color: #fff; }
+        .btn-primary:hover { background: #1557b0; }
+        .btn-success { background: #34a853; color: #fff; }
+        .btn-success:hover { background: #2d8f47; }
+        .btn-danger { background: #ea4335; color: #fff; }
+        .btn-danger:hover { background: #c62828; }
+        .btn-warning { background: #fbbc04; color: #333; }
+        .btn-warning:hover { background: #e0a800; }
+        .btn-outline { background: transparent; color: #1a73e8; border: 1px solid #1a73e8; }
+        .btn-outline:hover { background: #e8f0fe; }
+        .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+        .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+        .log-area { background: #1e1e1e; color: #d4d4d4; border-radius: 6px; padding: 12px; margin-top: 10px; max-height: 350px; overflow-y: auto; font-family: "Cascadia Code", "Fira Code", monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+        .log-area .log-time { color: #6a9955; }
+        .log-area .log-info { color: #9cdcfe; }
+        .log-area .log-success { color: #4ec9b0; }
+        .log-area .log-error { color: #f44747; }
+        .log-area .log-warn { color: #ce9178; }
+        .log-area .log-data { color: #b5cea8; }
+
+        .tabs { display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap; }
+        .tabs button { padding: 6px 14px; border: 1px solid #d9d9d9; border-radius: 6px 6px 0 0; background: #f8f9fa; cursor: pointer; font-size: 13px; font-weight: 500; color: #666; }
+        .tabs button.active { background: #fff; border-bottom-color: #fff; color: #1a73e8; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .file-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        .file-table th { background: #f8f9fa; padding: 8px 12px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #e8eaed; }
+        .file-table td { padding: 8px 12px; border-bottom: 1px solid #e8eaed; }
+        .file-table tr:hover { background: #f8f9fa; }
+        .file-table .actions { display: flex; gap: 4px; flex-wrap: wrap; }
+
+        .preview-frame { width: 100%; min-height: 400px; border: 1px solid #e8eaed; border-radius: 6px; margin-top: 10px; }
+        .preview-link { color: #1a73e8; cursor: pointer; text-decoration: none; }
+        .preview-link:hover { text-decoration: underline; }
+        .share-code-display { font-size: 24px; font-weight: bold; color: #34a853; text-align: center; padding: 10px; letter-spacing: 4px; }
+
+        .inline-code { background: #f1f3f4; padding: 1px 5px; border-radius: 3px; font-family: monospace; font-size: 12px; }
+
+        .row { display: flex; gap: 16px; }
+        .col { flex: 1; min-width: 0; }
+
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .status-active { background: #ceead6; color: #1e7e34; }
+        .status-expired { background: #fce8e6; color: #c62828; }
+
+        @media (max-width: 700px) { .row { flex-direction: column; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>文件分享 & 预览测试工具</h1>
+
+    <!-- 配置栏 -->
+    <div class="config-bar">
+        <label>服务地址</label>
+        <input class="url-input" id="serverUrl" value="http://localhost:8082" placeholder="http://localhost:8082">
+        <label>用户ID</label>
+        <input id="defaultUserId" value="1" style="width:70px">
+        <button class="btn btn-outline btn-sm" onclick="toggleAll()">展开/折叠全部</button>
+        <button class="btn btn-outline btn-sm" onclick="clearAllLogs()">清空日志</button>
+    </div>
+
+    <!-- ====== 文件管理 ====== -->
+    <div class="card">
+        <h2 onclick="toggleCard(this)">▶ 文件管理 <span class="badge badge-green">文件操作</span></h2>
+        <div class="card-body" style="display:block">
+            <div class="tabs">
+                <button class="active" data-tab="tab-file-list">文件列表</button>
+                <button data-tab="tab-file-upload">上传</button>
+                <button data-tab="tab-file-folder">创建文件夹</button>
+                <button data-tab="tab-file-preview">预览文件</button>
+            </div>
+
+            <!-- 文件列表 -->
+            <div class="tab-panel active" id="tab-file-list">
+                <div class="form-row">
+                    <label>父目录ID</label>
+                    <input id="listParentId" value="0">
+                    <button class="btn btn-primary btn-sm inline-btn" onclick="refreshFileList()">刷新列表</button>
+                </div>
+                <table class="file-table" id="fileListTable">
+                    <thead><tr><th>ID</th><th>名称</th><th>类型</th><th>大小</th><th>创建时间</th><th>操作</th></tr></thead>
+                    <tbody id="fileListBody"><tr><td colspan="6" style="text-align:center;color:#999;">点击"刷新列表"查看文件</td></tr></tbody>
+                </table>
+                <div class="log-area" id="log-file-list"></div>
+            </div>
+
+            <!-- 上传文件 -->
+            <div class="tab-panel" id="tab-file-upload">
+                <div class="form-row"><label>选择文件</label><input type="file" id="uploadFile"></div>
+                <div class="form-row"><label>父目录ID</label><input id="uploadParentId" value="0"></div>
+                <div class="form-row"><label>描述</label><input id="uploadDesc" value="测试上传"></div>
+                <button class="btn btn-primary" onclick="uploadFile()">上传文件</button>
+                <div class="log-area" id="log-file-upload"></div>
+            </div>
+
+            <!-- 创建文件夹 -->
+            <div class="tab-panel" id="tab-file-folder">
+                <div class="form-row"><label>文件夹名</label><input id="folderName" value="测试文件夹"></div>
+                <div class="form-row"><label>父目录ID</label><input id="folderParentId" value="0"></div>
+                <button class="btn btn-primary" onclick="createFolder()">创建文件夹</button>
+                <div class="log-area" id="log-file-folder"></div>
+            </div>
+
+            <!-- 预览文件 -->
+            <div class="tab-panel" id="tab-file-preview">
+                <div class="form-row"><label>文件ID</label><input id="previewFileId" value=""></div>
+                <button class="btn btn-primary" onclick="previewFile()">预览文件</button>
+                <iframe class="preview-frame" id="previewFrame"></iframe>
+                <div class="log-area" id="log-file-preview"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== 分享管理 ====== -->
+    <div class="card">
+        <h2 onclick="toggleCard(this)">▶ 分享管理 <span class="badge badge-orange">创建 / 管理分享</span></h2>
+        <div class="card-body" style="display:block">
+            <div class="tabs">
+                <button class="active" data-tab="tab-share-create">创建分享</button>
+                <button data-tab="tab-share-list">我的分享</button>
+                <button data-tab="tab-share-cancel">取消分享</button>
+            </div>
+
+            <!-- 创建分享 -->
+            <div class="tab-panel active" id="tab-share-create">
+                <div class="form-row"><label>文件/目录ID</label><input id="shareFileId" value=""></div>
+                <div class="form-row"><label>分享类型</label>
+                    <select id="shareType" onchange="onShareTypeChange()">
+                        <option value="1">公开分享 — 所有用户可访问</option>
+                        <option value="2">私密分享 — 仅指定用户可访问</option>
+                    </select>
+                </div>
+                <div class="form-row"><label>最大下载次数</label><input id="shareMaxCount" value="0" placeholder="0=无限制"></div>
+                <div class="form-row"><label>过期时间(小时)</label><input id="shareExpireHours" value="" placeholder="留空=永不过期"></div>
+                <div id="shareTargetUsersPanel" style="display:none;border:1px solid #e8eaed;border-radius:6px;padding:12px;margin-bottom:10px;">
+                    <div style="font-size:13px;font-weight:600;color:#555;margin-bottom:8px;">选择允许访问的用户（可多选）：</div>
+                    <div id="shareTargetUsersList" style="max-height:160px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:8px;">
+                        <span style="color:#999;font-size:12px;">加载中...</span>
+                    </div>
+                </div>
+                <button class="btn btn-success" onclick="createShare()">创建分享</button>
+                <div class="log-area" id="log-share-create"></div>
+            </div>
+
+            <!-- 我的分享列表 -->
+            <div class="tab-panel" id="tab-share-list">
+                <button class="btn btn-primary btn-sm" onclick="listMyShares()">刷新分享列表</button>
+                <table class="file-table" id="shareListTable">
+                    <thead><tr><th>ID</th><th>文件ID</th><th>分享码</th><th>类型</th><th>下载次数</th><th>过期时间</th><th>状态</th></tr></thead>
+                    <tbody id="shareListBody"><tr><td colspan="7" style="text-align:center;color:#999;">点击"刷新分享列表"查看</td></tr></tbody>
+                </table>
+                <div class="log-area" id="log-share-list"></div>
+            </div>
+
+            <!-- 取消分享 -->
+            <div class="tab-panel" id="tab-share-cancel">
+                <div class="form-row"><label>分享记录ID</label><input id="cancelShareId" value=""></div>
+                <button class="btn btn-danger" onclick="cancelShare()">取消分享</button>
+                <div class="log-area" id="log-share-cancel"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== 分享码访问 ====== -->
+    <div class="card">
+        <h2 onclick="toggleCard(this)">▶ 分享码访问 <span class="badge badge-green">使用分享码</span></h2>
+        <div class="card-body" style="display:block">
+            <div class="tabs">
+                <button class="active" data-tab="tab-share-info">分享信息</button>
+                <button data-tab="tab-share-list-files">查看文件列表</button>
+                <button data-tab="tab-share-download">下载文件</button>
+                <button data-tab="tab-share-preview">预览文件</button>
+                <button data-tab="tab-share-upload">上传到共享目录</button>
+            </div>
+
+            <!-- 公共分享码输入 -->
+            <div class="config-bar" style="margin-bottom:12px;">
+                <label>分享码</label>
+                <input id="shareCodeInput" value="" style="width:160px;font-size:16px;letter-spacing:2px;" placeholder="输入8位分享码">
+            </div>
+
+            <!-- 分享信息 -->
+            <div class="tab-panel active" id="tab-share-info">
+                <button class="btn btn-primary btn-sm" onclick="getShareInfo()">查询分享信息</button>
+                <div id="shareInfoDisplay" style="margin-top:10px;padding:16px;background:#f8f9fa;border-radius:6px;display:none;">
+                    <div class="share-code-display" id="shareCodeDisplay"></div>
+                    <div style="margin-top:8px;font-size:13px;" id="shareInfoDetail"></div>
+                    <div id="shareTargetUsersDisplay" style="margin-top:8px;font-size:13px;display:none;"></div>
+                </div>
+                <div class="log-area" id="log-share-info"></div>
+            </div>
+
+            <!-- 查看文件列表 -->
+            <div class="tab-panel" id="tab-share-list-files">
+                <button class="btn btn-primary btn-sm" onclick="getShareFileList()">刷新文件列表</button>
+                <table class="file-table" id="shareFileListTable">
+                    <thead><tr><th>ID</th><th>名称</th><th>类型</th><th>大小</th><th>操作</th></tr></thead>
+                    <tbody id="shareFileListBody"><tr><td colspan="5" style="text-align:center;color:#999;">输入分享码后点击刷新</td></tr></tbody>
+                </table>
+                <div class="log-area" id="log-share-list-files"></div>
+            </div>
+
+            <!-- 下载文件 -->
+            <div class="tab-panel" id="tab-share-download">
+                <div class="form-row"><label>文件ID（可选）</label>
+                    <input id="shareDownloadFileId" value="" placeholder="留空则下载分享的根文件；共享目录请指定文件ID">
+                </div>
+                <button class="btn btn-primary" onclick="shareDownload()">下载文件</button>
+                <div class="log-area" id="log-share-download"></div>
+            </div>
+
+            <!-- 预览文件 -->
+            <div class="tab-panel" id="tab-share-preview">
+                <div class="form-row"><label>文件ID（可选）</label>
+                    <input id="sharePreviewFileId" value="" placeholder="留空则预览分享的根文件；共享目录请指定文件ID">
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="sharePreview()">预览文件</button>
+                <iframe class="preview-frame" id="sharePreviewFrame"></iframe>
+                <div class="log-area" id="log-share-preview"></div>
+            </div>
+
+            <!-- 上传到共享目录 -->
+            <div class="tab-panel" id="tab-share-upload">
+                <div class="form-row"><label>选择文件</label><input type="file" id="shareUploadFile"></div>
+                <div class="form-row"><label>父目录ID</label><input id="shareUploadParentId" value="0"></div>
+                <div class="form-row"><label>描述</label><input id="shareUploadDesc" value="通过分享码上传"></div>
+                <button class="btn btn-success" onclick="shareUpload()">上传到共享目录</button>
+                <div class="log-area" id="log-share-upload"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ========== 全局状态 ==========
+    const BASE = () => document.getElementById('serverUrl').value.replace(/\/+$/, '');
+    const USER_ID = () => parseInt(document.getElementById('defaultUserId').value) || 1;
+
+    // ========== 工具函数 ==========
+    function $(id) { return document.getElementById(id); }
+
+    function log(el, msg, type) {
+        const t = new Date().toLocaleTimeString();
+        el.innerHTML += `<span class="log-time">[${t}]</span> <span class="log-${type||'info'}">${msg}</span>\n`;
+        el.scrollTop = el.scrollHeight;
+    }
+
+    function clearLog(el) { el.innerHTML = ''; }
+
+    function toggleCard(el) {
+        const body = el.parentElement.querySelector('.card-body');
+        const isHidden = body.style.display === 'none';
+        body.style.display = isHidden ? 'block' : 'none';
+        el.textContent = (isHidden ? '▼' : '▶') + el.textContent.slice(1);
+    }
+
+    function toggleAll() {
+        const all = document.querySelectorAll('.card-body');
+        const first = all[0];
+        const show = first.style.display === 'none';
+        all.forEach(b => { b.style.display = show ? 'block' : 'none'; });
+    }
+
+    function clearAllLogs() {
+        document.querySelectorAll('.log-area').forEach(el => el.innerHTML = '');
+    }
+
+    // 标签切换
+    document.querySelectorAll('.tabs button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const container = btn.closest('.card') || btn.closest('.card-body') || document;
+            container.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+            container.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(btn.dataset.tab).classList.add('active');
+        });
+    });
+
+    // ========== HTTP 请求 ==========
+    async function api(method, path, opts = {}) {
+        const url = BASE() + path;
+        const headers = {};
+        if (opts.json) { headers['Content-Type'] = 'application/json'; }
+        headers['userId'] = opts.userId != null ? opts.userId : USER_ID();
+
+        const fetchOpts = { method, headers };
+        if (opts.body) fetchOpts.body = opts.body;
+
+        const res = await fetch(url, fetchOpts);
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+            const data = await res.json();
+            if (!res.ok) throw new Error(`HTTP ${res.status}: ${data.message || res.statusText}`);
+            if (data.code !== 200) throw new Error(data.message || '业务错误');
+            return data;
+        }
+        // 非 JSON 响应（预览/下载流）
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        return res;
+    }
+
+    function apiGet(path, params, userId) {
+        const qs = Object.entries(params).filter(([_,v]) => v !== undefined && v !== null && v !== '').map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+        return api('GET', path + (qs ? '?' + qs : ''), { userId });
+    }
+
+    function apiPostForm(path, data, userId) {
+        const fd = new FormData();
+        Object.entries(data).forEach(([k,v]) => { if (v !== undefined && v !== null) fd.append(k, v); });
+        return api('POST', path, { body: fd, userId });
+    }
+
+    function apiPostJson(path, body, userId) {
+        return api('POST', path, { body: JSON.stringify(body), json: true, userId });
+    }
+
+    // 带 auth header 的下载（fetch 获取 blob 后触发下载）
+    async function asyncDownload(path, filename, logEl) {
+        const url = BASE() + path;
+        if (logEl) log(logEl, `⬇️ Fetch: ${url} (with userId header)`, 'info');
+        try {
+            const res = await fetch(url, { headers: { 'userId': USER_ID() } });
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`HTTP ${res.status}: ${errText}`);
+            }
+            // 从 Content-Disposition 提取文件名
+            const disposition = res.headers.get('Content-Disposition') || '';
+            const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"'\n;]+)/);
+            const name = filename || (match ? decodeURIComponent(match[1]) : 'download');
+            const blob = await res.blob();
+            const objUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = objUrl;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(objUrl);
+            if (logEl) log(logEl, `✅ 下载成功: ${name} (${(blob.size/1024).toFixed(1)}KB)`, 'success');
+        } catch (e) {
+            if (logEl) log(logEl, `❌ 下载失败: ${e.message}`, 'error');
+        }
+    }
+
+    // ========== 文件管理 ==========
+
+    // 刷新文件列表
+    async function refreshFileList() {
+        const logEl = $('log-file-list');
+        const tbody = $('fileListBody');
+        clearLog(logEl);
+        const parentId = $('listParentId').value || '0';
+        log(logEl, `GET ${BASE()}/file/list?parentId=${parentId}`, 'info');
+        try {
+            const res = await apiGet('/file/list', { parentId });
+            const files = res.data || [];
+            tbody.innerHTML = files.map(f => {
+                const isDir = f.isDirectory === 1;
+                const size = isDir ? '-' : formatSize(f.fileSize);
+                const icon = isDir ? '📁' : '📄';
+                return `<tr>
+                    <td>${f.id}</td>
+                    <td>${icon} ${f.originalName || f.fileName}</td>
+                    <td>${isDir ? '目录' : (f.fileExtension || '-')}</td>
+                    <td>${size}</td>
+                    <td>${f.createTime ? f.createTime.replace('T', ' ') : '-'}</td>
+                    <td class="actions">
+                        ${isDir ? `<button class="btn btn-sm btn-outline" onclick="enterDir(${f.id})">进入</button>` : ''}
+                        <button class="btn btn-sm btn-primary" onclick="downloadFileById(${f.id})">下载</button>
+                        <button class="btn btn-sm btn-warning" onclick="previewFileById(${f.id})">预览</button>
+                        <button class="btn btn-sm btn-success" onclick="quickShare(${f.id})">分享</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteFileById(${f.id})">删除</button>
+                    </td>
+                </tr>`;
+            }).join('');
+            log(logEl, `✅ 获取到 ${files.length} 个文件/目录`, 'success');
+        } catch (e) {
+            log(logEl, `❌ ${e.message}`, 'error');
+        }
+    }
+
+    function formatSize(bytes) {
+        if (!bytes || bytes === 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return (bytes / Math.pow(1024, i)).toFixed(2) + ' ' + units[i];
+    }
+
+    function enterDir(dirId) {
+        $('listParentId').value = dirId;
+        refreshFileList();
+    }
+
+    function downloadFileById(fileId) {
+        const logEl = $('log-file-list');
+        asyncDownload('/file/' + fileId + '/download', null, logEl);
+    }
+
+    function previewFileById(fileId) {
+        $('previewFileId').value = fileId;
+        // 切换到预览tab
+        document.querySelectorAll('#tab-file-preview .tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#tab-file-preview .tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelector('[data-tab="tab-file-preview"]').classList.add('active');
+        $('tab-file-preview').classList.add('active');
+        previewFile();
+    }
+
+    function deleteFileById(fileId) {
+        if (!confirm('确定删除文件ID: ' + fileId + ' 吗？')) return;
+        const logEl = $('log-file-list');
+        log(logEl, `DELETE ${BASE()}/file/${fileId}`, 'info');
+        api('DELETE', '/file/' + fileId, { userId: USER_ID() })
+            .then(r => { log(logEl, `✅ 删除成功`, 'success'); refreshFileList(); })
+            .catch(e => { log(logEl, `❌ ${e.message}`, 'error'); });
+    }
+
+    function quickShare(fileId) {
+        $('shareFileId').value = fileId;
+        // 切换到创建分享tab
+        const shareCard = document.querySelectorAll('.card')[1];
+        shareCard.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        shareCard.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        shareCard.querySelector('[data-tab="tab-share-create"]').classList.add('active');
+        $('tab-share-create').classList.add('active');
+    }
+
+    // 上传文件
+    async function uploadFile() {
+        const logEl = $('log-file-upload');
+        clearLog(logEl);
+        const file = $('uploadFile').files[0];
+        if (!file) { log(logEl, '❌ 请选择文件', 'error'); return; }
+        const parentId = $('uploadParentId').value || '0';
+        const description = $('uploadDesc').value || '';
+        log(logEl, `POST ${BASE()}/file/upload (parentId=${parentId}, file=${file.name}, size=${file.size})`, 'info');
+        try {
+            const res = await apiPostForm('/file/upload', { file, parentId, description }, USER_ID());
+            log(logEl, `✅ 上传成功: id=${res.data.id}, name=${res.data.originalName}, size=${formatSize(res.data.fileSize)}`, 'success');
+            refreshFileList();
+        } catch (e) {
+            log(logEl, `❌ ${e.message}`, 'error');
+        }
+    }
+
+    // 创建文件夹
+    async function createFolder() {
+        const logEl = $('log-file-folder');
+        clearLog(logEl);
+        const folderName = $('folderName').value || '新文件夹';
+        const parentId = $('folderParentId').value || '0';
+        log(logEl, `POST ${BASE()}/file/folder?folderName=${folderName}&parentId=${parentId}`, 'info');
+        try {
+            const res = await apiPostForm('/file/folder', { folderName, parentId }, USER_ID());
+            log(logEl, `✅ 创建成功: id=${res.data.id}, name=${res.data.fileName}`, 'success');
+            refreshFileList();
+        } catch (e) {
+            log(logEl, `❌ ${e.message}`, 'error');
+        }
+    }
+
+    // 预览文件（使用 fetch + Blob URL 绕过 header 限制）
+    async function previewFile() {
+        const logEl = $('log-file-preview');
+        const frame = $('previewFrame');
+        const fileId = $('previewFileId').value;
+        if (!fileId) { log(logEl, '❌ 请输入文件ID', 'error'); return; }
+        const url = BASE() + '/file/' + fileId + '/preview';
+        log(logEl, `🔗 Fetch: ${url} (with userId header)`, 'info');
+        try {
+            const res = await fetch(url, { headers: { 'userId': USER_ID() } });
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`HTTP ${res.status}: ${errText}`);
+            }
+            const blob = await res.blob();
+            // 释放上个预览的 blob URL
+            if (frame._blobUrl) URL.revokeObjectURL(frame._blobUrl);
+            frame._blobUrl = URL.createObjectURL(blob);
+            frame.src = frame._blobUrl;
+            log(logEl, `✅ 正在预览文件 ID=${fileId} (${blob.type || '未知类型'})`, 'success');
+        } catch (e) {
+            log(logEl, `❌ ${e.message}`, 'error');
+        }
+    }
+
+    // ========== 分享管理 ==========
+
+    // 创建分享
+    async function createShare() {
+        const logEl = $('log-share-create');
+        clearLog(logEl);
+        const fileId = $('shareFileId').value;
+        if (!fileId) { log(logEl, '❌ 请输入文件/目录ID', 'error'); return; }
+        const shareType = $('shareType').value;
+        const maxDownloadCount = $('shareMaxCount').value || '0';
+        const expireHours = $('shareExpireHours').value || '';
+
+        // 收集私密分享选中的用户
+        let targetUserIds = '';
+        if (parseInt(shareType) === 2) {
+            const cbs = document.querySelectorAll('.share-user-cb:checked');
+            if (cbs.length === 0) {
+                log(logEl, '❌ 私密分享请至少选择一个用户', 'error');
+                return;
+            }
+            targetUserIds = Array.from(cbs).map(cb => cb.value).join(',');
+        }
+
+        const params = { fileId, shareType, maxDownloadCount, targetUserIds: targetUserIds || undefined };
+        if (expireHours) params.expireHours = expireHours;
+
+        log(logEl, `POST ${BASE()}/share/create`, 'info');
+        log(logEl, `fileId=${fileId}, shareType=${shareType === '1' ? '公开' : '私密'}, maxDownloadCount=${maxDownloadCount}, expireHours=${expireHours || '无'}`, 'info');
+        if (targetUserIds) log(logEl, `目标用户: ${targetUserIds}`, 'info');
+        try {
+            const res = await apiPostForm('/share/create', params, USER_ID());
+            const share = res.data;
+            log(logEl, '✅ 分享创建成功!', 'success');
+            log(logEl, `分享码: ${share.shareCode}`, 'data');
+            log(logEl, `分享URL: ${share.shareUrl}`, 'data');
+            log(logEl, `过期时间: ${share.expireTime || '永不过期'}`, 'data');
+            log(logEl, `最大下载: ${share.maxDownloadCount === 0 ? '无限制' : share.maxDownloadCount}`, 'data');
+
+            // 自动填入分享码输入框
+            $('shareCodeInput').value = share.shareCode;
+        } catch (e) {
+            log(logEl, `❌ ${e.message}`, 'error');
+        }
+    }
+
+    // 获取我的分享列表
+    async function listMyShares() {
+        const logEl = $('log-share-list');
+        const tbody = $('shareListBody');
+        clearLog(logEl);
+        log(logEl, `GET ${BASE()}/share/list`, 'info');
+        try {
+            const res = await apiGet('/share/list', {});
+            const shares = res.data || [];
+            tbody.innerHTML = shares.map(s => {
+                const statusClass = s.status === 1 ? 'status-active' : 'status-expired';
+                const statusText = s.status === 1 ? '有效' : '已失效';
+                const typeText = s.shareType === 1 ? '公开' : '私密';
+                return `<tr>
+                    <td>${s.id}</td>
+                    <td>${s.fileId}</td>
+                    <td><strong>${s.shareCode}</strong></td>
+                    <td>${typeText}</td>
+                    <td>${s.downloadCount}${s.maxDownloadCount > 0 ? '/' + s.maxDownloadCount : ''}</td>
+                    <td>${s.expireTime ? s.expireTime.replace('T', ' ') : '永不过期'}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                </tr>`;
+            }).join('');
+            log(logEl, `✅ 获取到 ${shares.length} 条分享记录`, 'success');
+        } catch (e) {
+            log(logEl, `❌ ${e.message}`, 'error');
+        }
+    }
+
+    // 取消分享
+    async function cancelShare() {
+        const logEl = $('log-share-cancel');
+        clearLog(logEl);
+        const shareId = $('cancelShareId').value;
+        if (!shareId) { log(logEl, '❌ 请输入分享记录ID', 'error'); return; }
+        log(logEl, `DELETE ${BASE()}/share/${shareId}`, 'info');
+        try {
+            await api('DELETE', '/share/' + shareId, { userId: USER_ID() });
+            log(logEl, '✅ 取消分享成功', 'success');
+            listMyShares();
+        } catch (e) {
+            log(logEl, `❌ ${e.message}`, 'error');
+        }
+    }
+
+    // ========== 分享码访问 ==========
+
+    function getShareCode() {
+        return $('shareCodeInput').value.trim();
+    }
+
+    // 分享目录导航跟踪
+    let _shareCurrentDirId = 0;
+
+    // 分享类型切换：显示/隐藏目标用户选择
+    function onShareTypeChange() {
+        const isPrivate = parseInt($('shareType').value) === 2;
+        $('shareTargetUsersPanel').style.display = isPrivate ? 'block' : 'none';
+        if (isPrivate && $('shareTargetUsersList').children.length <= 1) {
+            loadShareUsers();
+        }
+    }
+
+    // 加载用户列表（用于私密分享选择）
+    async function loadShareUsers() {
+        const list = $('shareTargetUsersList');
+        list.innerHTML = '<span style="color:#999;font-size:12px;">加载中...</span>';
+        try {
+            const res = await apiGet('/share/users', {});
+            const users = res.data || [];
+            list.innerHTML = users.map(u => {
+                const checked = u.id === USER_ID() ? 'disabled' : '';
+                return `<label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:#f1f3f4;border-radius:4px;cursor:pointer;font-size:12px;">
+                    <input type="checkbox" class="share-user-cb" value="${u.id}" ${checked}>
+                    ${u.username} (ID:${u.id})
+                </label>`;
+            }).join('');
+        } catch (e) {
+            list.innerHTML = `<span style="color:#f44747;">加载失败: ${e.message}</span>`;
+        }
+    }
+
+    // 查询分享信息
+    async function getShareInfo() {
+        const logEl = $('log-share-info');
+        clearLog(logEl);
+        const code = getShareCode();
+        if (!code) { log(logEl, '❌ 请输入分享码', 'error'); return; }
+        log(logEl, `GET ${BASE()}/share/${code}`, 'info');
+        try {
+            const res = await apiGet('/share/' + code, {});
+            const s = res.data;
+            $('shareCodeDisplay').textContent = s.shareCode;
+            $('shareInfoDisplay').style.display = 'block';
+            $('shareInfoDetail').innerHTML = `
+                <table style="width:100%;font-size:13px;">
+                    <tr><td style="padding:4px 12px;color:#888;">分享类型</td><td>${s.shareType === 1 ? '公开分享' : '私密分享'}</td></tr>
+                    <tr><td style="padding:4px 12px;color:#888;">文件/目录ID</td><td>${s.fileId}</td></tr>
+                    <tr><td style="padding:4px 12px;color:#888;">下载次数</td><td>${s.downloadCount}${s.maxDownloadCount > 0 ? ' / ' + s.maxDownloadCount : ' (无限制)'}</td></tr>
+                    <tr><td style="padding:4px 12px;color:#888;">过期时间</td><td>${s.expireTime ? s.expireTime.replace('T', ' ') : '永不过期'}</td></tr>
+                    <tr><td style="padding:4px 12px;color:#888;">状态</td><td>${s.status === 1 ? '<span style="color:#34a853;">有效</span>' : '<span style="color:#ea4335;">已失效</span>'}</td></tr>
+                </table>
+            `;
+            // 私密分享：显示目标用户
+            const tuDisplay = $('shareTargetUsersDisplay');
+            if (s.shareType === 2) {
+                try {
+                    const tuRes = await apiGet('/share/' + code + '/target-users', {});
+                    const userIds = tuRes.data || [];
+                    if (userIds.length > 0) {
+                        const userMap = {};
+                        const userRes = await apiGet('/share/users', {});
+                        (userRes.data || []).forEach(u => userMap[u.id] = u.username);
+                        const names = userIds.map(id => userMap[id] || '用户#' + id).join(', ');
+                        tuDisplay.style.display = 'block';
+                        tuDisplay.innerHTML = `<strong>允许访问的用户：</strong> ${names}`;
+                    }
+                } catch (e) {
+                    tuDisplay.style.display = 'none';
+                }
+            } else {
+                tuDisplay.style.display = 'none';
+            }
+            log(logEl, '✅ 获取分享信息成功', 'success');
+        } catch (e) {
+            $('shareInfoDisplay').style.display = 'none';
+            log(logEl, `❌ ${e.message}`, 'error');
+        }
+    }
+
+    // 获取分享文件列表
+    async function getShareFileList() {
+        const logEl = $('log-share-list-files');
+        const tbody = $('shareFileListBody');
+        clearLog(logEl);
+        const code = getShareCode();
+        if (!code) { log(logEl, '❌ 请输入分享码', 'error'); return; }
+        log(logEl, `GET ${BASE()}/share/${code}/list?parentId=${_shareCurrentDirId}`, 'info');
+        try {
+            const res = await apiGet('/share/' + code + '/list', { parentId: _shareCurrentDirId });
+            const files = res.data || [];
+            tbody.innerHTML = files.map(f => {
+                const isDir = f.isDirectory === 1;
+                const size = isDir ? '-' : formatSize(f.fileSize);
+                const icon = isDir ? '📁' : '📄';
+                return `<tr>
+                    <td>${f.id}</td>
+                    <td>${icon} ${f.originalName || f.fileName}</td>
+                    <td>${isDir ? '目录' : (f.fileExtension || '-')}</td>
+                    <td>${size}</td>
+                    <td class="actions">
+                        ${isDir ? `<button class="btn btn-sm btn-outline" onclick="enterShareDir(${f.id})">进入</button>` : ''}
+                        ${!isDir ? `<button class="btn btn-sm btn-primary" onclick="shareDownloadFile(${f.id})">下载</button>` : ''}
+                        ${!isDir ? `<button class="btn btn-sm btn-warning" onclick="sharePreviewFile(${f.id})">预览</button>` : ''}
+                    </td>
+                </tr>`;
+            }).join('');
+            // 如果在子目录中，显示返回按钮
+            if (_shareCurrentDirId !== 0) {
+                tbody.innerHTML += `<tr><td colspan="5" style="text-align:center;">
+                    <button class="btn btn-sm btn-outline" onclick="goShareRoot()">⬆ 返回根目录</button>
+                </td></tr>`;
+            }
+            log(logEl, `✅ 获取到 ${files.length} 个文件/目录`, 'success');
+        } catch (e) {
+            log(logEl, `❌ ${e.message}`, 'error');
+        }
+    }
+
+    function enterShareDir(dirId) {
+        _shareCurrentDirId = dirId;
+        getShareFileList();
+    }
+
+    function goShareRoot() {
+        _shareCurrentDirId = 0;
+        getShareFileList();
+    }
+
+    // 通过分享码下载文件（支持 fileId）
+    async function shareDownloadFile(fileId) {
+        const logEl = $('log-share-list-files');
+        const code = getShareCode();
+        if (!code) return;
+        const path = '/share/' + code + '/download?fileId=' + fileId;
+        await asyncDownload(path, null, logEl);
+    }
+
+    // 通过分享码在 iframe 中预览文件（支持 fileId）
+    async function sharePreviewFile(fileId) {
+        const code = getShareCode();
+        if (!code) return;
+        const frame = $('sharePreviewFrame');
+        const url = BASE() + '/share/' + code + '/preview?fileId=' + fileId;
+        try {
+            const res = await fetch(url, { headers: { 'userId': USER_ID() } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            if (frame._blobUrl) URL.revokeObjectURL(frame._blobUrl);
+            frame._blobUrl = URL.createObjectURL(blob);
+            frame.src = frame._blobUrl;
+        } catch (e) {
+            const logEl = $('log-share-list-files');
+            log(logEl, `❌ 预览失败: ${e.message}`, 'error');
+        }
+    }
+
+    // 分享下载（手动输入模式，支持 fileId）
+    async function shareDownload() {
+        const logEl = $('log-share-download');
+        clearLog(logEl);
+        const code = getShareCode();
+        if (!code) { log(logEl, '❌ 请输入分享码', 'error'); return; }
+        const fileId = $('shareDownloadFileId').value.trim();
+        const path = '/share/' + code + '/download' + (fileId ? '?fileId=' + fileId : '');
+        log(logEl, `⬇️ 下载: ${BASE()}${path}`, 'info');
+        await asyncDownload(path, null, logEl);
+    }
+
+    // 分享预览（支持 fileId）
+    async function sharePreview() {
+        const logEl = $('log-share-preview');
+        const frame = $('sharePreviewFrame');
+        clearLog(logEl);
+        const code = getShareCode();
+        if (!code) { log(logEl, '❌ 请输入分享码', 'error'); return; }
+        const fileId = $('sharePreviewFileId').value.trim();
+        const url = BASE() + '/share/' + code + '/preview' + (fileId ? '?fileId=' + fileId : '');
+        log(logEl, `🔗 Fetch: ${url}`, 'info');
+        try {
+            const res = await fetch(url, { headers: { 'userId': USER_ID() } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            if (frame._blobUrl) URL.revokeObjectURL(frame._blobUrl);
+            frame._blobUrl = URL.createObjectURL(blob);
+            frame.src = frame._blobUrl;
+            log(logEl, `✅ 正在预览 (${blob.type || '未知类型'})`, 'success');
+        } catch (e) {
+            log(logEl, `❌ ${e.message}`, 'error');
+        }
+    }
+
+    // 上传到共享目录
+    async function shareUpload() {
+        const logEl = $('log-share-upload');
+        clearLog(logEl);
+        const code = getShareCode();
+        if (!code) { log(logEl, '❌ 请输入分享码', 'error'); return; }
+        const file = $('shareUploadFile').files[0];
+        if (!file) { log(logEl, '❌ 请选择文件', 'error'); return; }
+        const parentId = $('shareUploadParentId').value || '0';
+        const description = $('shareUploadDesc').value || '通过分享码上传';
+
+        log(logEl, `POST ${BASE()}/share/${code}/upload (file=${file.name}, parentId=${parentId})`, 'info');
+        try {
+            const res = await apiPostForm('/share/' + code + '/upload', { file, parentId, description }, USER_ID());
+            log(logEl, `✅ 上传成功: id=${res.data.id}, name=${res.data.originalName}`, 'success');
+            getShareFileList();
+        } catch (e) {
+            log(logEl, `❌ ${e.message}`, 'error');
+        }
+    }
+
+    // ========== 初始化 ==========
+    // 默认加载文件列表
+    refreshFileList();
+</script>
+</body>
+</html>

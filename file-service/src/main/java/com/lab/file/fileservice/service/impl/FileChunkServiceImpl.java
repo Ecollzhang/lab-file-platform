@@ -101,6 +101,7 @@ public class FileChunkServiceImpl extends ServiceImpl<FileChunkMapper, FileChunk
     }
 
     private void cleanupUploadCache(String md5, String uploadId, Long userId) {
+        System.out.println("删除:"+ uploadId);
         String uploadKey = buildUploadKey(userId, md5);
         redisTemplate.delete(uploadKey);
         redisTemplate.delete(CHUNK_PREFIX + md5 + ":" + uploadId);
@@ -125,14 +126,16 @@ public class FileChunkServiceImpl extends ServiceImpl<FileChunkMapper, FileChunk
     @Override
     public String initUpload(String fileName, String md5, Integer totalChunks, Long userId) {
         String uploadKey = buildUploadKey(userId, md5);
-
+        System.out.println("userId:"+ userId+ ", md5:" + md5);
         // 1. 检查 Redis 中是否存在活跃 session
         String existingUploadId = (String) redisTemplate.opsForHash().get(uploadKey, "uploadId");
+
         if (existingUploadId != null) {
             log.info("Reusing existing upload session from Redis, uploadId={}", existingUploadId);
             redisTemplate.opsForHash().put(uploadKey, "fileName", fileName);
             redisTemplate.opsForHash().put(uploadKey, "totalChunks", totalChunks);
             redisTemplate.expire(uploadKey, UPLOAD_EXPIRE_HOURS, TimeUnit.HOURS);
+            System.out.println("已存在:"  + uploadKey+ "   " + existingUploadId);
             return existingUploadId;
         }
 
@@ -329,7 +332,7 @@ public class FileChunkServiceImpl extends ServiceImpl<FileChunkMapper, FileChunk
             file.setUpdateTime(LocalDateTime.now());
 
             fileMapper.insert(file);
-
+            System.out.println("合并了");
             cleanupUploadCache(md5, uploadId, userId);
             return file;
         } catch (Exception e) {
@@ -345,6 +348,7 @@ public class FileChunkServiceImpl extends ServiceImpl<FileChunkMapper, FileChunk
 
     @Override
     public void cancelUpload(String md5, String uploadId, Long userId) {
+        System.out.println("取消了");
         try {
             String objectName = null;
             try {

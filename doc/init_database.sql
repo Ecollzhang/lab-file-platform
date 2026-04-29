@@ -39,6 +39,16 @@ CREATE TABLE t_file (
     version VARCHAR(20) DEFAULT '1.0' COMMENT '版本号'
 ) COMMENT='文件表';
 
+-- 分享用户权限表（私密分享指定允许访问的用户）
+CREATE TABLE t_file_share_user (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
+    share_id BIGINT NOT NULL COMMENT '分享ID',
+    user_id BIGINT NOT NULL COMMENT '允许访问的用户ID',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX idx_fsu_share_id (share_id),
+    INDEX idx_fsu_user_id (user_id)
+) COMMENT='分享用户权限表';
+
 -- 文件分享表
 CREATE TABLE t_file_share (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '分享ID',

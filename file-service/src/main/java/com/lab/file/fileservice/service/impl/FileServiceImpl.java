@@ -18,9 +18,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -37,9 +38,6 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, FileEntity> impleme
 
     @Value("${minio.bucket}")
     private String bucket;
-
-    @Autowired
-    private IFileShareService fileShareService;
 
     @Autowired
     private IOperationLogService operationLogService;
@@ -336,6 +334,104 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, FileEntity> impleme
             return outputStream.toByteArray();
         } catch (Exception e) {
             throw new BusinessException(500, "文件下载失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void previewFile(Long fileId, Long userId, HttpServletResponse response) {
+        FileEntity file = this.getById(fileId);
+        System.out.println(file);
+        System.out.println(file.getUserId()+ " "+ userId);
+        if (file == null || !file.getUserId().equals(userId)) {
+            throw new BusinessException(403, "文件不存在或无权限");
+        }
+        if (file.getIsDirectory() == 1) {
+            throw new BusinessException(400, "无法预览文件夹");
+        }
+
+        try {
+            InputStream inputStream = minioClient.getObject(
+                    GetObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(file.getFilePath())
+                            .build()
+            );
+
+            String contentType = getContentType(file.getFileExtension());
+            response.setContentType(contentType);
+            response.setHeader("Content-Disposition", "inline; filename=\"" + file.getOriginalName() + "\"");
+            if (file.getFileSize() != null) {
+                response.setHeader("Content-Length", String.valueOf(file.getFileSize()));
+            }
+
+            OutputStream outputStream = response.getOutputStream();
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+            inputStream.close();
+            outputStream.flush();
+
+            // 记录操作日志
+            operationLogService.recordOperationLog(
+                    userId,
+                    "未知用户名",
+                    "PREVIEW_FILE",
+                    "预览文件: " + file.getOriginalName(),
+                    "127.0.0.1",
+                    "Unknown"
+            );
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(500, "文件预览失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 根据文件扩展名获取MIME类型
+     */
+    private String getContentType(String extension) {
+        if (extension == null) return "application/octet-stream";
+        switch (extension.toLowerCase()) {
+            case "jpg": case "jpeg": return "image/jpeg";
+            case "png": return "image/png";
+            case "gif": return "image/gif";
+            case "webp": return "image/webp";
+            case "bmp": return "image/bmp";
+            case "svg": return "image/svg+xml";
+            case "ico": return "image/x-icon";
+            case "pdf": return "application/pdf";
+            case "txt": return "text/plain; charset=UTF-8";
+            case "html": case "htm": return "text/html; charset=UTF-8";
+            case "json": return "application/json; charset=UTF-8";
+            case "xml": return "application/xml; charset=UTF-8";
+            case "css": return "text/css; charset=UTF-8";
+            case "js": return "application/javascript; charset=UTF-8";
+            case "md": return "text/markdown; charset=UTF-8";
+            case "yaml": case "yml": return "text/yaml; charset=UTF-8";
+            case "java": case "py": case "c": case "cpp": case "h": case "hpp":
+            case "cs": case "php": case "rb": case "go": case "rs": case "swift":
+            case "kt": case "scala": case "sql": case "sh": case "bat":
+                return "text/plain; charset=UTF-8";
+            case "mp4": return "video/mp4";
+            case "webm": return "video/webm";
+            case "avi": return "video/x-msvideo";
+            case "mov": return "video/quicktime";
+            case "mp3": return "audio/mpeg";
+            case "wav": return "audio/wav";
+            case "ogg": return "audio/ogg";
+            case "flac": return "audio/flac";
+            case "doc": return "application/msword";
+            case "docx": return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "xls": return "application/vnd.ms-excel";
+            case "xlsx": return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "ppt": return "application/vnd.ms-powerpoint";
+            case "pptx": return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            case "zip": return "application/zip";
+            case "rar": return "application/vnd.rar";
+            default: return "application/octet-stream";
         }
     }
 }

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.lab.file.fileservice.entity.FileEntity;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
 import java.util.List;
 
 /**
@@ -45,4 +46,9 @@ public interface IFileService extends IService<FileEntity> {
      * 下载文件
      */
     byte[] downloadFile(Long fileId, Long userId);
+
+    /**
+     * 预览文件（内联显示，支持图片、文本、PDF、音视频等格式）
+     */
+    void previewFile(Long fileId, Long userId, HttpServletResponse response);
 }

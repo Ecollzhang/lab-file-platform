@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
 import java.util.List;
 
 /**
@@ -132,5 +133,16 @@ public class FileController {
                                        @RequestHeader(value = "userId", required = false) Long userId) {
         byte[] fileData = fileService.downloadFile(fileId, userId);
         return Result.success("下载成功", fileData);
+    }
+
+    /**
+     * 预览文件（支持图片、文本、PDF、音视频等格式内联显示）
+     */
+    @Operation(summary = "预览文件", description = "预览指定文件，支持图片、文本、PDF、音视频等格式内联显示")
+    @GetMapping("/{fileId}/preview")
+    public void previewFile(@Parameter(description = "文件ID", required = true) @PathVariable Long fileId,
+                            @RequestHeader(value = "userId", required = false) Long userId,
+                            HttpServletResponse response) {
+        fileService.previewFile(fileId, userId, response);
     }
 }

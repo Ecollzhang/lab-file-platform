@@ -578,12 +578,13 @@
         } catch (e) {
             flowLog(`❌ ${e.message}`, 'error');
             // 出错时自动取消
-            if (flowState.uploadId) {
-                try {
-                    await apiPostForm('/file/chunk/cancel', { md5: flowState.md5, uploadId: flowState.uploadId }, USER_ID());
-                    flowLog('ℹ️ 已自动取消该上传', 'warn');
-                } catch (_) {}
-            }
+            // 注释这一段，因为刷新会导致进入到这里，取消的话去丢弃之前上传的文件片
+            // if (flowState.uploadId) {
+            //     try {
+            //         await apiPostForm('/file/chunk/cancel', { md5: flowState.md5, uploadId: flowState.uploadId }, USER_ID());
+            //         flowLog('ℹ️ 已自动取消该上传', 'warn');
+            //     } catch (_) {}
+            // }
         } finally {
             btn.disabled = false;
             cancelBtn.disabled = true;
