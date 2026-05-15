@@ -1,0 +1,64 @@
+def fast_sort(arr):
+
+    if len(arr) <= 1:
+        return arr
+
+    center = len(arr) // 2
+    left = 0
+    right = len(arr) - 1
+
+    i = left
+    j = right
+    while left < right:
+
+        while arr[i] < arr[center]:
+            i += 1
+
+        while arr[j] > arr[center]:
+            j -= 1
+
+        if i < j:
+            arr[i], arr[j] = arr[j], arr[i]
+
+    leftArr = fast_sort(arr[:center])
+    rightArr = fast_sort(arr[center+1:])
+
+    return leftArr + rightArr
+
+fast_sort([2,3,5,1,2,6,4,8])
+
+
+# Definition for singly-linked list.
+# class ListNode:
+#     def __init__(self, val=0, next=None):
+#         self.val = val
+#         self.next = next
+class Solution:
+    def mergeTwoLists(self, list1: Optional[ListNode], list2: Optional[ListNode]) -> Optional[ListNode]:
+        n = len(list1)
+        m = len(list2)
+        i = 0
+        j = 0
+        ans = []
+        while i < n or j < m:
+            a = None
+            b = None
+            if i < n:
+                a = list1[i]
+            if j < m:
+                b = list2[j]
+
+            if a != None and b != None:
+                if a > b:
+                    ans.append(b)
+                    j+=1
+                else:
+                    ans.append(a)
+                    i+=1
+            elif a:
+               ans = ans + list1[i:]
+               break;
+            else:
+                ans = ans + list2[j:]
+        return ans
+
